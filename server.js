@@ -62,3 +62,10 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
+
+
+
+app.use(cors({
+  origin: 'https://nandisofetchsolution.netlify.app',
+  credentials: true
+}));
