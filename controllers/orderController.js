@@ -1,4 +1,3 @@
-// backend/controllers/orderController.js
 const pool = require('../config/db');
 
 // ✅ Get all orders
@@ -30,20 +29,26 @@ const getOrderById = async (req, res) => {
 const createOrder = async (req, res) => {
   try {
     const {
-      name, email, phone, service_type, platform,
+      name, project_name, email, phone, service_type, platform,
       features, design_style, deadline, budget,
-      attachment, additional_notes
+      attachment, additional_notes, status,
+      assigned_team, assign_to, start_date, end_date
     } = req.body;
 
     const result = await pool.query(`
       INSERT INTO orders (
-        name, email, phone, service_type, platform,
+        name, project_name, email, phone, service_type, platform,
         features, design_style, deadline, budget,
-        attachment, additional_notes
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-      [name, email, phone, service_type, platform,
+        attachment, additional_notes, status,
+        assigned_team, assign_to, start_date, end_date
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8,
+        $9, $10, $11, $12, $13, $14, $15, $16, $17
+      ) RETURNING *`,
+      [name, project_name, email, phone, service_type, platform,
         features, design_style, deadline, budget,
-        attachment, additional_notes]
+        attachment, additional_notes, status,
+        assigned_team, assign_to, start_date, end_date]
     );
 
     res.status(201).json(result.rows[0]);
@@ -57,21 +62,29 @@ const createOrder = async (req, res) => {
 const updateOrder = async (req, res) => {
   try {
     const {
-      name, email, phone, service_type, platform,
+      name, project_name, email, phone, service_type, platform,
       features, design_style, deadline, budget,
-      attachment, additional_notes
+      attachment, additional_notes, status,
+      assigned_team, assign_to, start_date, end_date
     } = req.body;
 
     const result = await pool.query(`
       UPDATE orders SET
-        name=$1, email=$2, phone=$3, service_type=$4, platform=$5,
-        features=$6, design_style=$7, deadline=$8, budget=$9,
-        attachment=$10, additional_notes=$11
-      WHERE id=$12 RETURNING *`,
-      [name, email, phone, service_type, platform,
+        name=$1, project_name=$2, email=$3, phone=$4, service_type=$5,
+        platform=$6, features=$7, design_style=$8, deadline=$9, budget=$10,
+        attachment=$11, additional_notes=$12, status=$13,
+        assigned_team=$14, assign_to=$15, start_date=$16, end_date=$17
+      WHERE id=$18 RETURNING *`,
+      [name, project_name, email, phone, service_type, platform,
         features, design_style, deadline, budget,
-        attachment, additional_notes, req.params.id]
+        attachment, additional_notes, status,
+        assigned_team, assign_to, start_date, end_date,
+        req.params.id]
     );
+
+    if (!result.rows.length) {
+      return res.status(404).send('Order not found');
+    }
 
     res.json(result.rows[0]);
   } catch (err) {
@@ -101,10 +114,33 @@ const approveOrder = async (req, res) => {
       [status, assigned_team, req.params.id]
     );
 
+    if (!result.rows.length) {
+      return res.status(404).send('Order not found');
+    }
+
     res.json(result.rows[0]);
   } catch (err) {
     console.error('Error approving order:', err);
     res.status(500).send('Failed to approve order');
+  }
+};
+
+// ✅ Handle delivery (includes website link, final price, and admin credentials)
+const deliverOrder = async (req, res) => {
+  try {
+    const { order_id, website_link, final_price, admin_id, admin_password } = req.body;
+
+    await pool.query(`
+      INSERT INTO deliveries (order_id, website_link, final_price, admin_id, admin_password)
+      VALUES ($1, $2, $3, $4, $5)
+    `, [order_id, website_link, final_price, admin_id, admin_password]);
+
+    // Optional: send email logic here
+
+    res.status(201).send('Delivery successful');
+  } catch (err) {
+    console.error('Error delivering order:', err);
+    res.status(500).send('Failed to deliver order');
   }
 };
 
@@ -114,5 +150,6 @@ module.exports = {
   createOrder,
   updateOrder,
   deleteOrder,
-  approveOrder
+  approveOrder,
+  deliverOrder
 };

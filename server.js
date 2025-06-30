@@ -48,6 +48,9 @@ app.use('/api/coursevideos',require('./routes/courseVideos'));
 app.use('/api/courses', require('./routes/courseRoutes'));
 app.use('/api/comments', require('./routes/commentRoutes'));
 app.use('/api/likes',require('./routes/likeRoutes'));
+app.use('/api/deliveries', require('./routes/deliveryRoutes'));
+
+app.use('/api/user', require('./routes/userdetailsRoutes'));
 // ✅ Default Home Route
 app.get('/', (req, res) => {
   res.send('✅ Nandi Softech Backend API is running...');
