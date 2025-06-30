@@ -1,7 +1,7 @@
 // File: routes/userdetailsRoutes.js
 const express = require('express');
 const router = express.Router();
-const { getUserDetails, updateUser, getUserOrders, updateOrder, getUserSubscriptions } = require('../controllers/userdetailsController');
+const { getUserDetails, updateUser, getUserOrders, updateOrder, getUserSubscriptions, submitFeedback } = require('../controllers/userdetailsController');
 
 router.get('/:email', getUserDetails);
 router.put('/:id', updateUser);
