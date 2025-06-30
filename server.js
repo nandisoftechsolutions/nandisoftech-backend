@@ -13,11 +13,18 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// ✅ Middlewares
+// ✅ CORS Setup (Important: place before routes)
 app.use(cors({
   origin: 'https://nandisofetchsolution.netlify.app',
-  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
+
+// ✅ Handle preflight requests globally
+app.options('*', cors());
+
+// ✅ Middlewares
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/uploads', express.static(uploadDir));
