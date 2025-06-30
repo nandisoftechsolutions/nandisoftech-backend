@@ -1,10 +1,11 @@
-require('dotenv').config(); // ✅ Load environment variables
-
+require('dotenv').config();
 const pool = require('../config/db');
 const Razorpay = require('razorpay');
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
+const path = require('path');
 
-// ✅ Razorpay setup with correct env vars
+// ✅ Razorpay setup
 const instance = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
@@ -15,8 +16,14 @@ async function initPayment(req, res) {
   try {
     const { courseId, username, email } = req.body;
 
+    if (!courseId || !email || !username) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
     const courseRes = await pool.query('SELECT * FROM courses WHERE id = $1', [courseId]);
-    if (!courseRes.rows.length) return res.status(404).json({ error: 'Course not found' });
+    if (courseRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
 
     const course = courseRes.rows[0];
 
@@ -34,7 +41,7 @@ async function initPayment(req, res) {
   }
 }
 
-// ✅ Verify Razorpay payment signature and save subscription
+// ✅ Verify Razorpay payment
 async function verifyPayment(req, res) {
   try {
     const {
@@ -45,7 +52,10 @@ async function verifyPayment(req, res) {
       email,
     } = req.body;
 
-    const crypto = require('crypto');
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !email || !courseId) {
+      return res.status(400).send('Invalid input');
+    }
+
     const generatedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(razorpay_order_id + '|' + razorpay_payment_id)
@@ -55,18 +65,16 @@ async function verifyPayment(req, res) {
       return res.status(400).send('Invalid Signature');
     }
 
-    // Insert subscription
     await pool.query(
       `INSERT INTO subscriptions (user_email, course_id, payment_id)
        VALUES ($1, $2, $3)`,
       [email, courseId, razorpay_payment_id]
     );
 
-    // Get course title
     const courseRes = await pool.query('SELECT title FROM courses WHERE id = $1', [courseId]);
     const courseTitle = courseRes.rows[0]?.title || 'Course';
 
-    // Send confirmation email
+    // ✅ Send email
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -78,8 +86,8 @@ async function verifyPayment(req, res) {
     await transporter.sendMail({
       from: process.env.EMAIL_FROM,
       to: email,
-      subject: `Purchase Successful: ${courseTitle}`,
-      text: `Hi,\n\nYou have successfully purchased the course "${courseTitle}".\n\nThank you!\n- Nandi Softech Solutions`,
+      subject: `🎉 Purchase Confirmation - ${courseTitle}`,
+      text: `Hi,\n\nYou have successfully purchased the course "${courseTitle}".\n\nThank you for choosing Nandi Softech Solutions!\n\nRegards,\nNandi Team`,
     });
 
     res.json({ success: true });
@@ -88,20 +96,31 @@ async function verifyPayment(req, res) {
     res.status(500).json({ error: 'Payment verification failed' });
   }
 }
-// In controllers/courseController.js
+
+// ✅ Check if user enrolled
 async function isEnrolled(req, res) {
-  const { courseId } = req.params;
-  const userEmail = req.query.userEmail;
-  const result = await pool.query(
-    'SELECT 1 FROM subscriptions WHERE course_id = $1 AND user_email = $2',
-    [courseId, userEmail]
-  );
-  res.json({ enrolled: result.rows.length > 0 });
+  try {
+    const { courseId } = req.params;
+    const userEmail = req.query.userEmail;
+
+    if (!userEmail || !courseId) {
+      return res.status(400).json({ error: 'Missing email or courseId' });
+    }
+
+    const result = await pool.query(
+      'SELECT 1 FROM subscriptions WHERE course_id = $1 AND user_email = $2',
+      [courseId, userEmail]
+    );
+
+    res.json({ enrolled: result.rows.length > 0 });
+  } catch (err) {
+    console.error('❌ Error checking enrollment:', err.message);
+    res.status(500).json({ error: 'Internal error' });
+  }
 }
 
-// 🔤 Convert slug to course title
+// 🔤 Convert slug to title
 function slugToTitle(slug) {
-  if (!slug) return '';
   return slug
     .split('-')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
@@ -109,39 +128,44 @@ function slugToTitle(slug) {
 }
 
 // ✅ Get all courses
-const getAllCourses = async (req, res) => {
+async function getAllCourses(req, res) {
   try {
     const result = await pool.query('SELECT * FROM courses ORDER BY id DESC');
     res.json(result.rows);
   } catch (err) {
     console.error('❌ Error fetching courses:', err.message);
-    res.status(500).json({ error: 'Server error while fetching courses' });
+    res.status(500).json({ error: 'Failed to fetch courses' });
   }
-};
+}
 
 // ✅ Get course by slug
-const getCourseBySlug = async (req, res) => {
-  const slug = req.params.slug;
-  const title = slugToTitle(slug);
-
+async function getCourseBySlug(req, res) {
   try {
+    const slug = req.params.slug;
+    const title = slugToTitle(slug);
+
     const result = await pool.query('SELECT * FROM courses WHERE title = $1', [title]);
 
-    if (result.rows.length === 0) {
+    if (!result.rows.length) {
       return res.status(404).json({ message: 'Course not found' });
     }
 
     res.json(result.rows[0]);
   } catch (err) {
     console.error('❌ Error fetching course by slug:', err.message);
-    res.status(500).json({ message: 'Server error while fetching course' });
+    res.status(500).json({ message: 'Error fetching course' });
   }
-};
+}
 
-// ✅ Add new course
-const addCourse = async (req, res) => {
+// ✅ Add course (with file upload)
+async function addCourse(req, res) {
   try {
-    const { title, description, price, offer, duration, thumbnail } = req.body;
+    const { title, description, price, offer, duration } = req.body;
+    const thumbnail = req.file ? req.file.filename : null;
+
+    if (!title || !description || !price) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
 
     const result = await pool.query(
       `INSERT INTO courses (title, description, price, offer, duration, thumbnail)
@@ -155,46 +179,43 @@ const addCourse = async (req, res) => {
     console.error('❌ Error adding course:', err.message);
     res.status(500).json({ error: 'Failed to add course' });
   }
-};
+}
 
-// ✅ Update existing course
-const updateCourse = async (req, res) => {
+// ✅ Update course (with optional file)
+async function updateCourse(req, res) {
   try {
     const id = req.params.id;
-    const { title, description, price, offer, duration, thumbnail } = req.body;
+    const { title, description, price, offer, duration } = req.body;
+    const thumbnail = req.file ? req.file.filename : null;
 
-    const result = await pool.query(
+    const courseCheck = await pool.query('SELECT * FROM courses WHERE id = $1', [id]);
+    if (!courseCheck.rows.length) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+    const updatedCourse = await pool.query(
       `UPDATE courses SET
-         title = $1,
-         description = $2,
-         price = $3,
-         offer = $4,
-         duration = $5,
-         thumbnail = $6
+         title = $1, description = $2, price = $3, offer = $4,
+         duration = $5, thumbnail = COALESCE($6, thumbnail)
        WHERE id = $7
        RETURNING *`,
       [title, description, price, offer, duration, thumbnail, id]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: 'Course not found' });
-    }
-
-    res.json(result.rows[0]);
+    res.json(updatedCourse.rows[0]);
   } catch (err) {
     console.error('❌ Error updating course:', err.message);
     res.status(500).json({ error: 'Failed to update course' });
   }
-};
+}
 
 // ✅ Get course by ID
-const getCourseById = async (req, res) => {
-  const id = req.params.id;
-
+async function getCourseById(req, res) {
   try {
+    const id = req.params.id;
     const result = await pool.query('SELECT * FROM courses WHERE id = $1', [id]);
 
-    if (result.rows.length === 0) {
+    if (!result.rows.length) {
       return res.status(404).json({ message: 'Course not found' });
     }
 
@@ -203,15 +224,15 @@ const getCourseById = async (req, res) => {
     console.error('❌ Error fetching course by ID:', err.message);
     res.status(500).json({ error: 'Server error' });
   }
-};
+}
 
 // ✅ Delete course
-const deleteCourse = async (req, res) => {
+async function deleteCourse(req, res) {
   try {
     const id = req.params.id;
 
     const check = await pool.query('SELECT * FROM courses WHERE id = $1', [id]);
-    if (check.rows.length === 0) {
+    if (!check.rows.length) {
       return res.status(404).json({ message: 'Course not found' });
     }
 
@@ -221,11 +242,9 @@ const deleteCourse = async (req, res) => {
     console.error('❌ Error deleting course:', err.message);
     res.status(500).json({ error: 'Failed to delete course' });
   }
-};
+}
 
-
-
-// 🔁 Export all functions
+// 🔁 Export
 module.exports = {
   getAllCourses,
   getCourseBySlug,
@@ -235,5 +254,5 @@ module.exports = {
   deleteCourse,
   initPayment,
   verifyPayment,
-  isEnrolled 
+  isEnrolled,
 };
