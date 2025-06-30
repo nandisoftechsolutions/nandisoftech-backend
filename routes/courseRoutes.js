@@ -18,38 +18,37 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) =>
     cb(null, Date.now() + path.extname(file.originalname)),
 });
-
 const upload = multer({ storage });
 
 // -----------------------------------------
 // ✅ COURSE ROUTES
 // -----------------------------------------
 
-// GET all courses
+// ✅ GET all courses
 router.get('/', courseController.getAllCourses);
 
-// GET course by ID (admin or internal use)
+// ✅ GET course by ID (admin or internal use)
 router.get('/byid/:id', courseController.getCourseById);
 
-// GET course enrollment check
+// ✅ GET: check if user is enrolled in course
 router.get('/:courseId/is-enrolled', courseController.isEnrolled);
 
-// POST add new course (with thumbnail upload)
+// ✅ POST add new course (with thumbnail upload)
 router.post('/add', upload.single('thumbnail'), courseController.addCourse);
 
-// PUT update course (with optional new thumbnail)
+// ✅ PUT update existing course (with optional new thumbnail)
 router.put('/update/:id', upload.single('thumbnail'), courseController.updateCourse);
 
-// DELETE course by ID
+// ✅ DELETE course by ID
 router.delete('/delete/:id', courseController.deleteCourse);
 
-// PAYMENT: Create Razorpay order
+// ✅ POST Razorpay order creation
 router.post('/init-payment', courseController.initPayment);
 
-// PAYMENT: Verify Razorpay payment
+// ✅ POST Razorpay payment verification
 router.post('/verify-payment', courseController.verifyPayment);
 
-// GET course by slug (must come last to avoid conflict)
+// ✅ GET course by slug — must be LAST to avoid route conflicts
 router.get('/:slug', courseController.getCourseBySlug);
 
 module.exports = router;
