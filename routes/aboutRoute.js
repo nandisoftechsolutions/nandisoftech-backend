@@ -3,7 +3,6 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
 
-// backend/routes/aboutRoute.js
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(`

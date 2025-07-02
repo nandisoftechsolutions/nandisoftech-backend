@@ -14,11 +14,14 @@ const {
 
 router.get('/', getAllJobs);
 router.post('/', addJob);
-router.put('/:jobId', updateJob);
-router.delete('/:jobId', deleteJob);
-router.get('/:jobId/applications', getJobApplications);
-router.get('/:jobId/applications/count', getJobApplicationsCount);
-router.patch('/:jobId/status', updateJobStatus);
+router.put('/:id', updateJob);
+router.delete('/:id', deleteJob);
+
+// Changed to safer param names:
+router.get('/job/:id/applications', getJobApplications);
+router.get('/job/:id/applications/count', getJobApplicationsCount);
+router.patch('/job/:id/status', updateJobStatus);
+
 router.get('/resume/:resumeName', downloadResume);
 
 module.exports = router;

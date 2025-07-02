@@ -6,16 +6,15 @@ const path = require('path');
 const fs = require('fs');
 const adminController = require('../controllers/adminController');
 
-// ✅ Ensure upload directory exists
 const uploadDir = path.join(__dirname, '..', 'uploads', 'admins');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 
-// ✅ Configure Multer storage for file uploads
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, uploadDir); // Upload path is guaranteed to exist
+    cb(null, uploadDir); 
   },
   filename: function (req, file, cb) {
     const ext = path.extname(file.originalname);
@@ -24,10 +23,10 @@ const storage = multer.diskStorage({
   },
 });
 
-// ✅ File type validation (image only)
+
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // Max 5MB
+  limits: { fileSize: 5 * 1024 * 1024 }, 
   fileFilter: function (req, file, cb) {
     const allowedTypes = /jpeg|jpg|png|gif/;
     const ext = allowedTypes.test(path.extname(file.originalname).toLowerCase());
@@ -39,11 +38,11 @@ const upload = multer({
   }
 });
 
-// ✅ Admin API Routes
-router.get('/', adminController.getAdmins); // Get all admins
-router.post('/', upload.single('photo'), adminController.addAdmin); // Add admin
-router.put('/:id', upload.single('photo'), adminController.updateAdmin); // Update admin
-router.delete('/:id', adminController.deleteAdmin); // Delete admin
-router.post('/login', adminController.loginAdmin); // Admin login
+
+router.get('/', adminController.getAdmins); 
+router.post('/', upload.single('photo'), adminController.addAdmin); 
+router.put('/:id', upload.single('photo'), adminController.updateAdmin); 
+router.delete('/:id', adminController.deleteAdmin); 
+router.post('/login', adminController.loginAdmin); 
 
 module.exports = router;

@@ -1,12 +1,23 @@
-// File: routes/userdetailsRoutes.js
+// FILE: routes/userdetailsRoutes.js
 const express = require('express');
 const router = express.Router();
-const { getUserDetails, updateUser, getUserOrders, updateOrder, getUserSubscriptions, submitFeedback } = require('../controllers/userdetailsController');
+const {
+  getUserDetails,
+  updateUser,
+  getUserOrders,
+  updateOrder,
+  getUserSubscriptions,
+  submitFeedback,
+} = require('../controllers/userdetailsController');
 
-router.get('/:email', getUserDetails);
-router.put('/:id', updateUser);
-router.get('/:email/orders', getUserOrders);
+// More explicit paths avoiding problematic param names:
 router.put('/orders/:id', updateOrder);
-router.get('/:email/subscriptions', getUserSubscriptions);
 router.post('/feedback', submitFeedback);
+
+router.get('/user/:email/orders', getUserOrders);
+router.get('/user/:email/subscriptions', getUserSubscriptions);
+
+router.get('/user/:email', getUserDetails);
+router.put('/:id', updateUser);
+
 module.exports = router;

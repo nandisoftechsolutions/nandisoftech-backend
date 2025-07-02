@@ -1,9 +1,19 @@
+// File: routes/videoRoutes.js
+
 const express = require('express');
 const router = express.Router();
-const { getAllVideos, getVideoById, addVideo } = require('../controllers/videoController');
+const {
+  getAllVideos,
+  getVideoById,
+  addVideo
+} = require('../controllers/videoController');
 
-router.get('/videos', getAllVideos);
-router.get('/videos/:id', getVideoById);
-router.post('/videos', addVideo);
+// ✅ These resolve to:
+// GET    /api/videos
+// GET    /api/videos/:id
+// POST   /api/videos
+router.get('/', getAllVideos);
+router.get('/:id', getVideoById);
+router.post('/', addVideo);
 
 module.exports = router;

@@ -5,12 +5,12 @@ const { getAllProjects, getProjectById, addProject } = require('../controllers/p
 const router = express.Router();
 
 // Route to get all projects
-router.get('/projects', getAllProjects);
+router.get('/', getAllProjects);
 
 // Route to get a specific project by ID
-router.get('/projects/:id', getProjectById);
+router.get('/:id', getProjectById);
 
 // Route to add a new project
-router.post('/projects', addProject);
+router.post('/', addProject);
 
 module.exports = router;

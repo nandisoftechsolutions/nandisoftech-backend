@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const { updateApplicantStatus } = require('../controllers/applicantController');
 
-router.patch('/:applicantId/status', updateApplicantStatus);
+// Changed param from ':applicantId' to '/applicant/:id' for clarity & safety
+router.patch('/applicant/:id/status', updateApplicantStatus);
 
 module.exports = router;
